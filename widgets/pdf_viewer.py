@@ -2,7 +2,7 @@ import pymupdf
 import pytesseract
 from PIL import Image
 
-from PySide6.QtCore import Signal, Qt, QRect, QUrl, QMimeData, QThread, QStandardPaths
+from PySide6.QtCore import Signal, Qt, QRect, QUrl, QMimeData, QThread, QStandardPaths, QTimer
 from PySide6.QtGui import (
     QPixmap,
     QImage,
@@ -27,13 +27,15 @@ class OCRThread(QThread):
     finished = Signal(str)
     error = Signal(str)
 
-    def __init__(self, img):
+    def __init__(self, img, ocr_lang: str = "tur+eng") -> None:
         super().__init__()
         self.img = img
+        self.ocr_lang = ocr_lang
 
-    def run(self):
+    def run(self) -> None:
         try:
-            text = pytesseract.image_to_string(self.img, lang="tur+pol+eng", config="--psm 6")
+            # Hardcoded değer yerine değişkenden okuyoruz
+            text = pytesseract.image_to_string(self.img, lang=self.ocr_lang, config="--psm 6")
             self.finished.emit(text.strip())
         except Exception as e:
             self.error.emit(str(e))
@@ -57,6 +59,11 @@ class PDFViewer(QScrollArea):
         self.zoom = 1.5
         self.current_file_path = ""
 
+        # --- Debounce Timer Eklentisi ---
+        self.render_timer = QTimer(self)
+        self.render_timer.setSingleShot(True)
+        self.render_timer.timeout.connect(self._render_page_high_res)
+        #------------------------------------------------------------
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.mousePressEvent = self.mousePressEvent
@@ -108,8 +115,8 @@ class PDFViewer(QScrollArea):
             from PySide6.QtWidgets import QMessageBox
             QMessageBox.critical(self, t("err_open_title"), t("err_open_msg"))
             self.doc = None
-
-    def render_page(self):
+            
+    def _render_page_high_res(self) -> None:
         if not self.doc: return
 
         page = self.doc[self.current_page]
@@ -186,6 +193,10 @@ class PDFViewer(QScrollArea):
         self.image_label.resize(target_width, target_height)
         pix = None
 
+    # Yeni render_page fonksiyonumuz sadece timer'ı tetikliyor
+    def render_page(self) -> None:
+        # Hızlı ardışık tekerlek hareketlerinde önceki çağrıyı iptal edip süreyi sıfırlar
+        self.render_timer.start(150) # 150 ms bekler, hareket bitince asıl render'ı yapar
 
     def set_highlight(self, rects):
         self.highlight_rects = rects
@@ -423,6 +434,28 @@ class PDFViewer(QScrollArea):
         self.zoom = max(0.4, self.zoom - 0.2)
         self.render_page()
 
+    def zoom_100(self):
+        """PDF'i orijinal (%100) boyutuna getirir."""
+        self.zoom = 1.0
+        self.render_page()
+        self.zoom_changed.emit()
+
+    def fit_to_width(self):
+        """PDF'i ekrandaki kaydırma alanının genişliğine tam sığdırır."""
+        if not self.doc: return
+        page = self.doc[self.current_page]
+        
+        # viewport() QScrollArea'nın görünür alanını verir.
+        # -20 piksel ise dikey kaydırma çubuğu ve kenarlık payıdır, yatay kaydırma çubuğunun çıkmasını engeller.
+        view_width = self.viewport().width() - 20 
+        pdf_width = page.rect.width
+        
+        if pdf_width > 0:
+            self.zoom = view_width / pdf_width
+            self.render_page()
+            self.zoom_changed.emit()
+    # ---------------------------------
+
     def get_selected_text(self):
         if self.selection_start is None or self.selection_end is None or not self.doc: return ""
         rect = pymupdf.Rect(
@@ -452,7 +485,7 @@ class PDFViewer(QScrollArea):
                 pix = page.get_pixmap(matrix=matrix, clip=rect)
                 img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                 
-                self.ocr_thread = OCRThread(img)
+                self.ocr_thread = OCRThread(img, ocr_lang=getattr(self, "current_ocr_lang", "tur+eng"))
                 self.ocr_thread.finished.connect(self._on_ocr_finished)
                 self.ocr_thread.error.connect(self._on_ocr_error)
                 self.ocr_thread.start()
@@ -682,3 +715,4 @@ class PDFViewer(QScrollArea):
                     self.previous_page()
                     v_scrollbar.setValue(v_scrollbar.maximum())
                 event.accept()
+

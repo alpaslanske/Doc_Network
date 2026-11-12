@@ -19,15 +19,16 @@ class PDFSearchWorker(QThread):
 
     def run(self):
         try:
-            doc = pymupdf.open(self.file_path)
             results = []
-            for page_no in range(len(doc)):
-                if self.isInterruptionRequested():
-                    break
-                page = doc[page_no]
-                for rect in page.search_for(self.search_text):
-                    results.append((page_no, rect))
-            doc.close()
+            # 'with' bloğu PDF'i açar ve işlem bitince (veya hata çıkarsa) otomatik kapatır
+            with pymupdf.open(self.file_path) as doc:
+                for page_no in range(len(doc)):
+                    if self.isInterruptionRequested():
+                        break
+                    page = doc[page_no]
+                    for rect in page.search_for(self.search_text):
+                        results.append((page_no, rect))
+                        
             self.finished.emit(results)
         except Exception as e:
             self.error.emit(str(e))
@@ -50,46 +51,47 @@ class TableExportWorker(QThread):
 
     def run(self):
         try:
-            doc = pymupdf.open(self.file_path)
-            page = doc[self.page_no]
-            rect = pymupdf.Rect(self.x0, self.y0, self.x1, self.y1)
-            tables = page.find_tables(clip=rect)
-
-            if not tables or not tables.tables:
-                self.no_table.emit()
-                doc.close()
-                return
-
-            data = tables.tables[0].extract()
-            if not data:
-                self.no_table.emit()
-                doc.close()
-                return
-
-            df = pd.DataFrame(data).fillna('').astype(str).replace(['NaN', 'None'], '', regex=True)
-            cleaned_rows = df.apply(
-                lambda row: [str(val).replace('\n', ' ').strip() for val in row if str(val).strip() != ''],
-                axis=1
-            ).tolist()
-
-            if not cleaned_rows:
-                self.no_table.emit()
-                doc.close()
-                return
-
-            max_cols = max(len(row) for row in cleaned_rows if row)
             final_data = []
-            for i, row in enumerate(cleaned_rows):
-                if not row:
-                    final_data.append([""] * max_cols)
-                    continue
-                if len(row) < max_cols:
-                    if i == 0:
-                        row = [""] * (max_cols - len(row)) + row
-                    else:
-                        row = row + [""] * (max_cols - len(row))
-                final_data.append(row)
+            
+            # 1. Aşama: PDF'ten veriyi güvenlice oku ve kapat
+            with pymupdf.open(self.file_path) as doc:
+                page = doc[self.page_no]
+                rect = pymupdf.Rect(self.x0, self.y0, self.x1, self.y1)
+                tables = page.find_tables(clip=rect)
 
+                if not tables or not tables.tables:
+                    self.no_table.emit()
+                    return
+
+                data = tables.tables[0].extract()
+                if not data:
+                    self.no_table.emit()
+                    return
+
+                df = pd.DataFrame(data).fillna('').astype(str).replace(['NaN', 'None'], '', regex=True)
+                cleaned_rows = df.apply(
+                    lambda row: [str(val).replace('\n', ' ').strip() for val in row if str(val).strip() != ''],
+                    axis=1
+                ).tolist()
+
+                if not cleaned_rows:
+                    self.no_table.emit()
+                    return
+
+                max_cols = max(len(row) for row in cleaned_rows if row)
+                
+                for i, row in enumerate(cleaned_rows):
+                    if not row:
+                        final_data.append([""] * max_cols)
+                        continue
+                    if len(row) < max_cols:
+                        if i == 0:
+                            row = [""] * (max_cols - len(row)) + row
+                        else:
+                            row = row + [""] * (max_cols - len(row))
+                    final_data.append(row)
+
+            # 2. Aşama: Excel kaydetme işlemleri (Bu noktada PDF dosyası kilitli değil!)
             df_clean = pd.DataFrame(final_data)
             df_clean.to_excel(self.save_filename, index=False, header=False)
 
@@ -104,8 +106,8 @@ class TableExportWorker(QThread):
             except Exception:
                 pass
 
-            doc.close()
             self.finished.emit(self.save_filename)
+            
         except Exception as e:
             self.error.emit(str(e))
 
@@ -123,22 +125,24 @@ class PDFPrintWorker(QThread):
 
     def run(self):
         try:
-            doc = pymupdf.open(self.file_path)
             painter = QPainter(self.printer)
+            
+            # 'with' kullanarak PDF işlemlerini garantiliyoruz
+            with pymupdf.open(self.file_path) as doc:
+                for i in range(self.from_page, self.to_page + 1):
+                    if i > self.from_page:
+                        self.printer.newPage()
+                        
+                    page = doc[i]
+                    matrix = pymupdf.Matrix(3, 3)
+                    pix = page.get_pixmap(matrix=matrix)
+                    image = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format_RGB888)
 
-            for i in range(self.from_page, self.to_page + 1):
-                if i > self.from_page:
-                    self.printer.newPage()
-                page = doc[i]
-                matrix = pymupdf.Matrix(3, 3)
-                pix = page.get_pixmap(matrix=matrix)
-                image = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format_RGB888)
-
-                rect = self.printer.pageRect(QPrinter.DevicePixel)
-                painter.drawImage(rect, image)
+                    rect = self.printer.pageRect(QPrinter.DevicePixel)
+                    painter.drawImage(rect, image)
 
             painter.end()
-            doc.close()
             self.finished.emit(self.printer.printerName())
+            
         except Exception as e:
             self.error.emit(str(e))

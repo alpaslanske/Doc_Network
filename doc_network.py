@@ -137,6 +137,7 @@ class OfficeConvertWorker(QThread):
 
         except Exception as e:
             self.error.emit(str(e))
+            
 class NoteBrowser(QTextBrowser):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -146,7 +147,6 @@ class NoteBrowser(QTextBrowser):
         if self.main_window:
             self.main_window.enable_note_editing()
         super().mouseDoubleClickEvent(event)
-
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -176,7 +176,11 @@ class MainWindow(QMainWindow):
         self.btn_next = QPushButton()
         self.btn_zoom_in = QPushButton()
         self.btn_zoom_out = QPushButton()
+        
         self.btn_toggle = QPushButton()
+        self.btn_zoom_100 = QPushButton("%100")
+        self.btn_zoom_fit = QPushButton("↔ Sığdır")
+                
         self.btn_print = QPushButton()
         self.btn_export = QPushButton()
         self.note_label = QLabel()
@@ -212,6 +216,7 @@ class MainWindow(QMainWindow):
         if self.tab_widget.count() > 0:
             return self.tab_widget.currentWidget()
         return None
+        
     def metinleri_guncelle(self):
         base_title = t("app_title")
         if self.current_pdf:
@@ -250,6 +255,14 @@ class MainWindow(QMainWindow):
         self.update_dashboard_ui(self.pdf_history)
         self.load_groups()
 
+        self.btn_toggle.setText(t("btn_toggle"))
+        
+        self.btn_zoom_100.setText("%100")
+        if self.combo_lang.currentIndex() == 1: # İngilizce ise
+            self.btn_zoom_fit.setText("↔ Fit Width")
+        else:
+            self.btn_zoom_fit.setText("↔ Sığdır")
+        
     def lang_degistir(self, index):
         set_lang("tr" if index == 0 else "en")
         self.metinleri_guncelle()
@@ -283,6 +296,10 @@ class MainWindow(QMainWindow):
         self.btn_next.clicked.connect(self.next_page)
         self.btn_zoom_in.clicked.connect(self.zoom_in)
         self.btn_zoom_out.clicked.connect(self.zoom_out)
+        
+        self.btn_zoom_100.clicked.connect(self.zoom_100)
+        self.btn_zoom_fit.clicked.connect(self.zoom_fit)
+        
         self.btn_group.clicked.connect(self.add_group)
         self.btn_toggle.clicked.connect(self.toggle_bookmarks)
         self.btn_print.clicked.connect(self.print_pdf)
@@ -294,13 +311,15 @@ class MainWindow(QMainWindow):
         self.combo_lang.addItems(["🇹🇷 TR", "🇬🇧 EN"])
         self.combo_lang.setMinimumWidth(85)
         self.combo_lang.currentIndexChanged.connect(self.lang_degistir)
+
         for btn in (self.btn_dashboard, self.btn_nav_back, self.btn_nav_forward, self.btn_print, self.btn_open, self.btn_prev, self.btn_next,
-                    self.btn_zoom_in, self.btn_zoom_out, self.btn_group,
+                    self.btn_zoom_in, self.btn_zoom_out, self.btn_zoom_100, self.btn_zoom_fit, self.btn_group,
                     self.btn_toggle, self.btn_export, self.page_label,
                     self.zoom_label, self.combo_lang):
             btn.setMaximumHeight(28)
 
-
+        # --- BUTON YERLEŞİM SIRASI ---        
+        toolbar.addWidget(self.btn_toggle)
         toolbar.addWidget(self.btn_dashboard)
         
         toolbar.addWidget(self.btn_nav_back)
@@ -313,13 +332,17 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(self.btn_prev)
         toolbar.addWidget(self.btn_next)
         toolbar.addWidget(self.page_edit)
+        
         toolbar.addWidget(self.btn_zoom_in)
         toolbar.addWidget(self.btn_zoom_out)
-        toolbar.addWidget(self.btn_toggle)
+        toolbar.addWidget(self.btn_zoom_100)
+        toolbar.addWidget(self.btn_zoom_fit)
+        
         toolbar.addStretch()
         toolbar.addWidget(self.zoom_label)
         toolbar.addWidget(self.page_label)
         toolbar.addWidget(self.combo_lang)
+        # ------------------------------------------
 
         self.search_box = QLineEdit()
         self.search_box.textChanged.connect(self.filter_tree)
@@ -672,6 +695,18 @@ class MainWindow(QMainWindow):
         viewer = self.get_current_viewer()
         if viewer:
             viewer.zoom_out()
+            self.update_zoom_label()
+
+    def zoom_100(self):
+        viewer = self.get_current_viewer()
+        if viewer:
+            viewer.zoom_100()
+            self.update_zoom_label()
+
+    def zoom_fit(self):
+        viewer = self.get_current_viewer()
+        if viewer:
+            viewer.fit_to_width()
             self.update_zoom_label()
 
     def update_zoom_label(self):
