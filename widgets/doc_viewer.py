@@ -40,7 +40,7 @@ class OCRThread(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
-class PDFViewer(QScrollArea):
+class DOCViewer(QScrollArea):
 
     zoom_changed = Signal()
     bookmarkRequested = Signal(int, str, float, float)

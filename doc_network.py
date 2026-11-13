@@ -23,10 +23,10 @@ from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
 from database import Database
 from widgets.bookmark_tree import BookmarkTree
-from widgets.pdf_viewer import PDFViewer
+from widgets.doc_viewer import DOCViewer
 from lang import t, set_lang
 from widgets.recent_file_card import RecentFileCard
-from widgets.pdf_workers import PDFPrintWorker, PDFSearchWorker
+from widgets.doc_workers import PDFPrintWorker, PDFSearchWorker
 from widgets.export_manager import ExportManager
 
 
@@ -676,7 +676,7 @@ class MainWindow(QMainWindow):
         QMessageBox.critical(self, t("err_convert_title"), t("err_convert_msg") + f"\n\nSistem Detayı: {err_msg}")
 
     def _load_pdf_into_tab(self, active_open_path, original_path, is_office_doc, page, x, y):
-        new_viewer = PDFViewer()
+        new_viewer = DOCViewer()
         new_viewer.original_file_path = original_path
         new_viewer.is_office_doc = is_office_doc
 
@@ -789,7 +789,7 @@ class MainWindow(QMainWindow):
             self.page_label.setText(t("lbl_page_empty"))
             self.page_edit.clear()
             return
-        if self.sender() and isinstance(self.sender(), PDFViewer) and self.sender() != viewer:
+        if self.sender() and isinstance(self.sender(), DOCViewer) and self.sender() != viewer:
             return
         current = viewer.current_page + 1
         total = len(viewer.doc)
