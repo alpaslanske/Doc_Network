@@ -523,6 +523,12 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(t("app_title"))
             self.page_label.setText(t("lbl_page_empty"))
             self.page_edit.clear()
+            self.btn_zoom_in.setEnabled(False)
+            self.btn_zoom_out.setEnabled(False)
+            
+            # AÇIK BELGE KALMADIĞINDA BELGE YER İMLERİNİ TEMİZLE
+            self.load_pdf_bookmarks() 
+            
         self.update_dashboard_button()
 
     def on_tree_item_clicked(self, item):
