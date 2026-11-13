@@ -153,6 +153,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.db = Database()
         self.export_manager = ExportManager(self)
+        self.current_theme = "light"
 
         if "APPIMAGE" in os.environ:
             self.proje_ana_dizini = Path(os.environ["APPIMAGE"]).parent
@@ -195,6 +196,8 @@ class MainWindow(QMainWindow):
         self.nav_back_stack = []
         self.nav_forward_stack = []
         self.is_navigating_history = False
+        
+        self.btn_theme_toggle = QPushButton()
 
 
         self.settings_file = self.proje_ana_dizini / "data" / "settings.json"
@@ -268,6 +271,58 @@ class MainWindow(QMainWindow):
         self.metinleri_guncelle()
         self.save_settings()
 
+    def get_dark_stylesheet(self):
+        return """
+        QMainWindow, QWidget { background-color: #151a21; color: #d1d6dc; }
+        QSplitter::handle { background: #232b35; }
+        QLineEdit, QTextBrowser, QTreeView, QListView, QTableView, QScrollArea {
+            background-color: #1a2027; 
+            border: 1px solid #2d3640; 
+            color: #d1d6dc; 
+            border-radius: 4px;
+            alternate-background-color: #1e2630;
+        }
+        QPushButton {
+            background-color: #1e2630; border: 1px solid #2d3640; border-radius: 4px; padding: 4px 8px; color: #d1d6dc;
+        }
+        QPushButton:hover { background-color: #26303c; border-color: #38434f; }
+        QPushButton:pressed { background-color: #151a21; }
+        QPushButton:disabled { color: #5a6673; background-color: #151a21; border-color: #1e2630; }
+        QComboBox { background-color: #1e2630; border: 1px solid #2d3640; color: #d1d6dc; border-radius: 4px; padding: 2px 8px; }
+        QComboBox::drop-down { border: none; }
+        QTabWidget::pane { border: 1px solid #2d3640; background: #151a21; }
+        QTabBar::tab { background-color: #1e2630; color: #8c97a1; padding: 6px 12px; border: 1px solid #2d3640; border-bottom: none; border-top-left-radius: 4px; border-top-right-radius: 4px; margin-right: 2px; }
+        QTabBar::tab:selected { background-color: #151a21; color: #d1d6dc; font-weight: bold; }
+        QTreeView::item:selected, QListView::item:selected, QTableView::item:selected { background-color: #137886; color: white; }
+        QTreeView::item:hover, QListView::item:hover, QTableView::item:hover { background-color: #1e2630; }
+        QHeaderView::section { background-color: #1e2630; color: #d1d6dc; border: 1px solid #2d3640; padding: 4px; }
+        QMenu { background-color: #1a2027; color: #d1d6dc; border: 1px solid #2d3640; }
+        QMenu::item:selected { background-color: #137886; }
+        """
+        
+    def apply_theme(self):
+        if self.current_theme == "dark":
+            self.btn_theme_toggle.setText("☀️ Light")
+            QApplication.instance().setStyleSheet(self.get_dark_stylesheet())
+            self.dash_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #d1d6dc;")
+            self.stats_label.setStyleSheet("font-size: 13px; color: #8c97a1; font-style: italic;")
+            self.dash_recent_lbl.setStyleSheet("color: #d1d6dc;")
+            self.note_label.setStyleSheet("font-weight: bold; margin-top: 5px; color: #d1d6dc;")
+        else:
+            self.btn_theme_toggle.setText("🌙 Dark")
+            QApplication.instance().setStyleSheet("")
+            self.dash_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #2c3e50;")
+            self.stats_label.setStyleSheet("font-size: 13px; color: #7f8c8d; font-style: italic;")
+            self.dash_recent_lbl.setStyleSheet("color: #000000;")
+            self.note_label.setStyleSheet("font-weight: bold; margin-top: 5px; color: #000000;")
+        
+        self.update_dashboard_ui(self.pdf_history)
+
+    def toggle_theme(self):
+        self.current_theme = "dark" if self.current_theme == "light" else "light"
+        self.apply_theme()
+        self.save_settings()
+
     def setup_ui(self):
         central = QWidget()
         root = QVBoxLayout()
@@ -311,11 +366,13 @@ class MainWindow(QMainWindow):
         self.combo_lang.addItems(["🇹🇷 TR", "🇬🇧 EN"])
         self.combo_lang.setMinimumWidth(85)
         self.combo_lang.currentIndexChanged.connect(self.lang_degistir)
+        
+        self.btn_theme_toggle.clicked.connect(self.toggle_theme)
 
         for btn in (self.btn_dashboard, self.btn_nav_back, self.btn_nav_forward, self.btn_print, self.btn_open, self.btn_prev, self.btn_next,
                     self.btn_zoom_in, self.btn_zoom_out, self.btn_zoom_100, self.btn_zoom_fit, self.btn_group,
                     self.btn_toggle, self.btn_export, self.page_label,
-                    self.zoom_label, self.combo_lang):
+                    self.zoom_label, self.combo_lang, self.btn_theme_toggle):
             btn.setMaximumHeight(28)
 
         # --- BUTON YERLEŞİM SIRASI ---        
@@ -342,6 +399,7 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(self.zoom_label)
         toolbar.addWidget(self.page_label)
         toolbar.addWidget(self.combo_lang)
+        toolbar.addWidget(self.btn_theme_toggle)
         # ------------------------------------------
 
         self.search_box = QLineEdit()
@@ -352,8 +410,6 @@ class MainWindow(QMainWindow):
         left_layout = QVBoxLayout(self.left_panel)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(4)
-
-        self.note_label.setStyleSheet("font-weight: bold; margin-top: 5px;")
 
         self.note_edit = NoteBrowser()
         self.note_edit.main_window = self
@@ -408,11 +464,10 @@ class MainWindow(QMainWindow):
         dash_layout = QVBoxLayout(self.dashboard_widget)
         dash_layout.setContentsMargins(20, 20, 20, 20)
         dash_layout.setSpacing(15)
-        self.dash_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #2c3e50;")
+        
         dash_layout.addWidget(self.dash_title)
 
         self.stats_label = QLabel()
-        self.stats_label.setStyleSheet("font-size: 13px; color: #7f8c8d; font-style: italic;")
         dash_layout.addWidget(self.stats_label)
 
         dash_layout.addWidget(self.dash_recent_lbl)
@@ -790,7 +845,8 @@ class MainWindow(QMainWindow):
             "bookmarks_visible": is_visible,
             "pdf_history": getattr(self, "pdf_history", []),
             "last_active_index": self.right_stack.currentIndex(),
-            "language": "tr" if self.combo_lang.currentIndex() == 0 else "en"
+            "language": "tr" if self.combo_lang.currentIndex() == 0 else "en",
+            "theme": self.current_theme
         }
         with open(self.settings_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
@@ -798,6 +854,7 @@ class MainWindow(QMainWindow):
     def load_settings(self):
         if not self.settings_file.exists():
             self.update_dashboard_ui([])
+            self.apply_theme()
             return
         try:
             with open(self.settings_file, "r", encoding="utf-8") as f:
@@ -808,9 +865,12 @@ class MainWindow(QMainWindow):
             self.combo_lang.blockSignals(False)
             self.resize(data.get("window_width", 1400), data.get("window_height", 900))
             self.pdf_history = data.get("pdf_history", [])
+            self.current_theme = data.get("theme", "light")
+            self.apply_theme()
             self.update_dashboard_ui(self.pdf_history)
         except Exception:
             self.update_dashboard_ui([])
+            self.apply_theme()
 
     def update_dashboard_ui(self, history):
         while self.grid_layout.count():
@@ -831,7 +891,7 @@ class MainWindow(QMainWindow):
         for idx, d in enumerate(history):
             if not isinstance(d, dict):
                 continue
-            card = RecentFileCard(d)
+            card = RecentFileCard(d, theme=self.current_theme)
             card.clicked.connect(self.open_from_dashboard_card)
             card.delete_requested.connect(self.delete_from_dashboard_card)
             self.grid_layout.addWidget(card, idx // 4, idx % 4)

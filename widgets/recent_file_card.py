@@ -8,9 +8,10 @@ class RecentFileCard(QFrame):
     clicked = Signal(dict)
     delete_requested = Signal(dict)
 
-    def __init__(self, file_data, parent=None):
+    def __init__(self, file_data, theme="light", parent=None):
         super().__init__(parent)
         self.file_data = file_data
+        self.theme = theme
         self.setup_ui()
 
     def setup_ui(self):
@@ -20,17 +21,29 @@ class RecentFileCard(QFrame):
         self.setFixedWidth(280)
         self.setMinimumHeight(90)
 
-        self.setStyleSheet("""
-            QFrame#RecentCard {
-                background-color: #ffffff;
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
-            }
-            QFrame#RecentCard:hover {
-                background-color: #ffffff;
-                border: 1px solid #3498db;
-            }
-        """)
+        if self.theme == "dark":
+            self.setStyleSheet("""
+                QFrame#RecentCard {
+                    background-color: #1a2027;
+                    border: 1px solid #2d3640;
+                    border-radius: 12px;
+                }
+                QFrame#RecentCard:hover {
+                    border: 1px solid #137886;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                QFrame#RecentCard {
+                    background-color: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                }
+                QFrame#RecentCard:hover {
+                    background-color: #ffffff;
+                    border: 1px solid #3498db;
+                }
+            """)
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(12, 12, 12, 12)
@@ -47,7 +60,11 @@ class RecentFileCard(QFrame):
 
         file_name = Path(path_str).name
         lbl_name = QLabel(file_name)
-        lbl_name.setStyleSheet("font-weight: bold; font-size: 13px; color: #2c3e50;")
+        
+        if self.theme == "dark":
+            lbl_name.setStyleSheet("font-weight: bold; font-size: 13px; color: #d1d6dc;")
+        else:
+            lbl_name.setStyleSheet("font-weight: bold; font-size: 13px; color: #2c3e50;")
 
         metrics = lbl_name.fontMetrics()
         elided_text = metrics.elidedText(file_name, Qt.ElideRight, 180)
@@ -57,16 +74,17 @@ class RecentFileCard(QFrame):
         btn_delete = QPushButton("×")
         btn_delete.setFixedSize(20, 20)
         btn_delete.setCursor(Qt.ArrowCursor)
-        btn_delete.setStyleSheet("""
-            QPushButton {
-                border: none;
-                border-radius: 10px;
-                color: #95a5a6;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background-color: #e74c3c; color: white; }
-        """)
+        if self.theme == "dark":
+            btn_delete.setStyleSheet("""
+                QPushButton { border: none; border-radius: 10px; color: #5a6673; font-size: 14px; font-weight: bold; background-color: transparent;}
+                QPushButton:hover { background-color: #a93226; color: white; }
+            """)
+        else:
+            btn_delete.setStyleSheet("""
+                QPushButton { border: none; border-radius: 10px; color: #95a5a6; font-size: 14px; font-weight: bold; background-color: transparent;}
+                QPushButton:hover { background-color: #e74c3c; color: white; }
+            """)
+            
         btn_delete.clicked.connect(self.emit_delete)
         header_layout.addWidget(btn_delete)
         main_layout.addLayout(header_layout)
@@ -74,14 +92,26 @@ class RecentFileCard(QFrame):
         footer_layout = QHBoxLayout()
         page_no = self.file_data.get("page", 0) + 1
         lbl_page = QLabel(f" Sayfa {page_no}")
-        lbl_page.setStyleSheet("""
-            font-size: 11px;
-            background-color: #e8f4fd;
-            color: #2980b9;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-weight: bold;
-        """)
+        
+        if self.theme == "dark":
+            lbl_page.setStyleSheet("""
+                font-size: 11px;
+                background-color: #137886;
+                color: #ffffff;
+                padding: 3px 8px;
+                border-radius: 6px;
+                font-weight: bold;
+            """)
+        else:
+            lbl_page.setStyleSheet("""
+                font-size: 11px;
+                background-color: #e8f4fd;
+                color: #2980b9;
+                padding: 3px 8px;
+                border-radius: 6px;
+                font-weight: bold;
+            """)
+            
         footer_layout.addWidget(lbl_page)
 
         date_raw = self.file_data.get("date", "-")
