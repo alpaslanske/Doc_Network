@@ -28,7 +28,7 @@ class PDFSearchWorker(QThread):
                     page = doc[page_no]
                     for rect in page.search_for(self.search_text):
                         results.append((page_no, rect))
-                        
+
             self.finished.emit(results)
         except Exception as e:
             self.error.emit(str(e))
@@ -52,7 +52,7 @@ class TableExportWorker(QThread):
     def run(self):
         try:
             final_data = []
-            
+
             # 1. Aşama: PDF'ten veriyi güvenlice oku ve kapat
             with pymupdf.open(self.file_path) as doc:
                 page = doc[self.page_no]
@@ -79,7 +79,7 @@ class TableExportWorker(QThread):
                     return
 
                 max_cols = max(len(row) for row in cleaned_rows if row)
-                
+
                 for i, row in enumerate(cleaned_rows):
                     if not row:
                         final_data.append([""] * max_cols)
@@ -107,7 +107,7 @@ class TableExportWorker(QThread):
                 pass
 
             self.finished.emit(self.save_filename)
-            
+
         except Exception as e:
             self.error.emit(str(e))
 
@@ -126,13 +126,13 @@ class PDFPrintWorker(QThread):
     def run(self):
         try:
             painter = QPainter(self.printer)
-            
+
             # 'with' kullanarak PDF işlemlerini garantiliyoruz
             with pymupdf.open(self.file_path) as doc:
                 for i in range(self.from_page, self.to_page + 1):
                     if i > self.from_page:
                         self.printer.newPage()
-                        
+
                     page = doc[i]
                     matrix = pymupdf.Matrix(3, 3)
                     pix = page.get_pixmap(matrix=matrix)
@@ -143,6 +143,6 @@ class PDFPrintWorker(QThread):
 
             painter.end()
             self.finished.emit(self.printer.printerName())
-            
+
         except Exception as e:
             self.error.emit(str(e))

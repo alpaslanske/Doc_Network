@@ -60,7 +60,7 @@ class RecentFileCard(QFrame):
 
         file_name = Path(path_str).name
         lbl_name = QLabel(file_name)
-        
+
         if self.theme == "dark":
             lbl_name.setStyleSheet("font-weight: bold; font-size: 13px; color: #d1d6dc;")
         else:
@@ -84,7 +84,7 @@ class RecentFileCard(QFrame):
                 QPushButton { border: none; border-radius: 10px; color: #95a5a6; font-size: 14px; font-weight: bold; background-color: transparent;}
                 QPushButton:hover { background-color: #e74c3c; color: white; }
             """)
-            
+
         btn_delete.clicked.connect(self.emit_delete)
         header_layout.addWidget(btn_delete)
         main_layout.addLayout(header_layout)
@@ -92,7 +92,7 @@ class RecentFileCard(QFrame):
         footer_layout = QHBoxLayout()
         page_no = self.file_data.get("page", 0) + 1
         lbl_page = QLabel(f" Sayfa {page_no}")
-        
+
         if self.theme == "dark":
             lbl_page.setStyleSheet("""
                 font-size: 11px;
@@ -111,7 +111,7 @@ class RecentFileCard(QFrame):
                 border-radius: 6px;
                 font-weight: bold;
             """)
-            
+
         footer_layout.addWidget(lbl_page)
 
         date_raw = self.file_data.get("date", "-")

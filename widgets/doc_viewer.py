@@ -115,7 +115,7 @@ class DOCViewer(QScrollArea):
             from PySide6.QtWidgets import QMessageBox
             QMessageBox.critical(self, t("err_open_title"), t("err_open_msg"))
             self.doc = None
-            
+
     def _render_page_high_res(self) -> None:
         if not self.doc: return
 
@@ -444,12 +444,12 @@ class DOCViewer(QScrollArea):
         """PDF'i ekrandaki kaydırma alanının genişliğine tam sığdırır."""
         if not self.doc: return
         page = self.doc[self.current_page]
-        
+
         # viewport() QScrollArea'nın görünür alanını verir.
         # -20 piksel ise dikey kaydırma çubuğu ve kenarlık payıdır, yatay kaydırma çubuğunun çıkmasını engeller.
-        view_width = self.viewport().width() - 20 
+        view_width = self.viewport().width() - 20
         pdf_width = page.rect.width
-        
+
         if pdf_width > 0:
             self.zoom = view_width / pdf_width
             self.render_page()
@@ -484,16 +484,16 @@ class DOCViewer(QScrollArea):
                 matrix = pymupdf.Matrix(3, 3)
                 pix = page.get_pixmap(matrix=matrix, clip=rect)
                 img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                
+
                 self.ocr_thread = OCRThread(img, ocr_lang=getattr(self, "current_ocr_lang", "tur+eng"))
                 self.ocr_thread.finished.connect(self._on_ocr_finished)
                 self.ocr_thread.error.connect(self._on_ocr_error)
                 self.ocr_thread.start()
-                
+
                 self.selection_start = None
                 self.selection_end = None
                 self.render_page()
-                return 
+                return
             except Exception as e:
                 print(f"[HATA] OCR Hazirlik Hatasi: {e}")
 
@@ -549,7 +549,7 @@ class DOCViewer(QScrollArea):
 
     def _on_ocr_finished(self, plain_text):
         if not plain_text: return
-            
+
         mime_data = QMimeData()
         normalized_ocr = plain_text.replace('\r\n', '\n')
         paragraphs = normalized_ocr.split('\n\n')
@@ -580,7 +580,7 @@ class DOCViewer(QScrollArea):
         html_formatted = "\n".join(html_lines)
         full_html = f"<html><body><div style='font-family: sans-serif;'>{html_formatted}</div></body></html>"
         safe_plain_text = "\r\n\r\n".join(plain_lines)
-        
+
         mime_data.setText(safe_plain_text)
         mime_data.setHtml(full_html)
         QApplication.clipboard().setMimeData(mime_data)

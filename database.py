@@ -21,14 +21,14 @@ class Database:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         # Çoklu thread erişimlerinde kilitlenmeyi önlemek için kilit (lock) oluşturuyoruz
         self.lock = threading.Lock()
-        
+
         self.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-        
+
         with self.lock:
             # SQLite'ı hızlandırmak ve kilitlenmeleri (database is locked) önlemek için WAL modu
             self.conn.execute("PRAGMA journal_mode=WAL;")
             self.conn.execute("PRAGMA synchronous=NORMAL;")
-            
+
         self.create_tables()
         self.check_and_update_schema()
 
@@ -58,7 +58,7 @@ class Database:
             # Performans için indeksler
             self.conn.execute("CREATE INDEX IF NOT EXISTS idx_bookmarks_group ON bookmarks(group_id)")
             self.conn.execute("CREATE INDEX IF NOT EXISTS idx_bookmarks_pdf ON bookmarks(pdf_path)")
-            
+
             # Hızlı Arama (FTS5) Tablosu (Gelecek arama optimizasyonu için)
             self.conn.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS pdf_search_index USING fts5(

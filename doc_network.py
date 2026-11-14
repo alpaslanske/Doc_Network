@@ -137,7 +137,7 @@ class OfficeConvertWorker(QThread):
 
         except Exception as e:
             self.error.emit(str(e))
-            
+
 class NoteBrowser(QTextBrowser):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -177,11 +177,11 @@ class MainWindow(QMainWindow):
         self.btn_next = QPushButton()
         self.btn_zoom_in = QPushButton()
         self.btn_zoom_out = QPushButton()
-        
+
         self.btn_toggle = QPushButton()
         self.btn_zoom_100 = QPushButton("%100")
         self.btn_zoom_fit = QPushButton("↔ Sığdır")
-                
+
         self.btn_print = QPushButton()
         self.btn_export = QPushButton()
         self.note_label = QLabel()
@@ -190,13 +190,13 @@ class MainWindow(QMainWindow):
         self.dash_title = QLabel()
         self.dash_recent_lbl = QLabel()
         self.btn_dashboard = QPushButton()
-        
+
         self.btn_nav_back = QPushButton("⬅️")
         self.btn_nav_forward = QPushButton("➡️")
         self.nav_back_stack = []
         self.nav_forward_stack = []
         self.is_navigating_history = False
-        
+
         self.btn_theme_toggle = QPushButton()
 
 
@@ -219,7 +219,7 @@ class MainWindow(QMainWindow):
         if self.tab_widget.count() > 0:
             return self.tab_widget.currentWidget()
         return None
-        
+
     def metinleri_guncelle(self):
         base_title = t("app_title")
         if self.current_pdf:
@@ -259,13 +259,13 @@ class MainWindow(QMainWindow):
         self.load_groups()
 
         self.btn_toggle.setText(t("btn_toggle"))
-        
+
         self.btn_zoom_100.setText("%100")
         if self.combo_lang.currentIndex() == 1: # İngilizce ise
             self.btn_zoom_fit.setText("↔ Fit Width")
         else:
             self.btn_zoom_fit.setText("↔ Sığdır")
-        
+
     def lang_degistir(self, index):
         set_lang("tr" if index == 0 else "en")
         self.metinleri_guncelle()
@@ -276,9 +276,9 @@ class MainWindow(QMainWindow):
         QMainWindow, QWidget { background-color: #151a21; color: #d1d6dc; }
         QSplitter::handle { background: #232b35; }
         QLineEdit, QTextBrowser, QTreeView, QListView, QTableView, QScrollArea {
-            background-color: #1a2027; 
-            border: 1px solid #2d3640; 
-            color: #d1d6dc; 
+            background-color: #1a2027;
+            border: 1px solid #2d3640;
+            color: #d1d6dc;
             border-radius: 4px;
             alternate-background-color: #1e2630;
         }
@@ -299,7 +299,7 @@ class MainWindow(QMainWindow):
         QMenu { background-color: #1a2027; color: #d1d6dc; border: 1px solid #2d3640; }
         QMenu::item:selected { background-color: #137886; }
         """
-        
+
     def apply_theme(self):
         if self.current_theme == "dark":
             self.btn_theme_toggle.setText("☀️ Light")
@@ -315,7 +315,7 @@ class MainWindow(QMainWindow):
             self.stats_label.setStyleSheet("font-size: 13px; color: #7f8c8d; font-style: italic;")
             self.dash_recent_lbl.setStyleSheet("color: #000000;")
             self.note_label.setStyleSheet("font-weight: bold; margin-top: 5px; color: #000000;")
-        
+
         self.update_dashboard_ui(self.pdf_history)
 
     def toggle_theme(self):
@@ -344,17 +344,17 @@ class MainWindow(QMainWindow):
         self.btn_nav_back.setEnabled(False)
         self.btn_nav_forward.setEnabled(False)
         self.btn_nav_back.setMinimumWidth(36)
-        self.btn_nav_forward.setMinimumWidth(36)       
-        
+        self.btn_nav_forward.setMinimumWidth(36)
+
         self.btn_open.clicked.connect(self.open_pdf)
         self.btn_prev.clicked.connect(self.previous_page)
         self.btn_next.clicked.connect(self.next_page)
         self.btn_zoom_in.clicked.connect(self.zoom_in)
         self.btn_zoom_out.clicked.connect(self.zoom_out)
-        
+
         self.btn_zoom_100.clicked.connect(self.zoom_100)
         self.btn_zoom_fit.clicked.connect(self.zoom_fit)
-        
+
         self.btn_group.clicked.connect(self.add_group)
         self.btn_toggle.clicked.connect(self.toggle_bookmarks)
         self.btn_print.clicked.connect(self.print_pdf)
@@ -366,7 +366,7 @@ class MainWindow(QMainWindow):
         self.combo_lang.addItems(["🇹🇷 TR", "🇬🇧 EN"])
         self.combo_lang.setMinimumWidth(85)
         self.combo_lang.currentIndexChanged.connect(self.lang_degistir)
-        
+
         self.btn_theme_toggle.clicked.connect(self.toggle_theme)
 
         for btn in (self.btn_dashboard, self.btn_nav_back, self.btn_nav_forward, self.btn_print, self.btn_open, self.btn_prev, self.btn_next,
@@ -375,13 +375,13 @@ class MainWindow(QMainWindow):
                     self.zoom_label, self.combo_lang, self.btn_theme_toggle):
             btn.setMaximumHeight(28)
 
-        # --- BUTON YERLEŞİM SIRASI ---        
+        # --- BUTON YERLEŞİM SIRASI ---
         toolbar.addWidget(self.btn_toggle)
         toolbar.addWidget(self.btn_dashboard)
-        
+
         toolbar.addWidget(self.btn_nav_back)
-        toolbar.addWidget(self.btn_nav_forward)       
-        
+        toolbar.addWidget(self.btn_nav_forward)
+
         toolbar.addWidget(self.btn_open)
         toolbar.addWidget(self.btn_print)
         toolbar.addWidget(self.btn_export)
@@ -389,12 +389,12 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(self.btn_prev)
         toolbar.addWidget(self.btn_next)
         toolbar.addWidget(self.page_edit)
-        
+
         toolbar.addWidget(self.btn_zoom_in)
         toolbar.addWidget(self.btn_zoom_out)
         toolbar.addWidget(self.btn_zoom_100)
         toolbar.addWidget(self.btn_zoom_fit)
-        
+
         toolbar.addStretch()
         toolbar.addWidget(self.zoom_label)
         toolbar.addWidget(self.page_label)
@@ -464,7 +464,7 @@ class MainWindow(QMainWindow):
         dash_layout = QVBoxLayout(self.dashboard_widget)
         dash_layout.setContentsMargins(20, 20, 20, 20)
         dash_layout.setSpacing(15)
-        
+
         dash_layout.addWidget(self.dash_title)
 
         self.stats_label = QLabel()
@@ -525,10 +525,10 @@ class MainWindow(QMainWindow):
             self.page_edit.clear()
             self.btn_zoom_in.setEnabled(False)
             self.btn_zoom_out.setEnabled(False)
-            
+
             # AÇIK BELGE KALMADIĞINDA BELGE YER İMLERİNİ TEMİZLE
-            self.load_pdf_bookmarks() 
-            
+            self.load_pdf_bookmarks()
+
         self.update_dashboard_button()
 
     def on_tree_item_clicked(self, item):
@@ -1068,7 +1068,7 @@ class MainWindow(QMainWindow):
         c_vis = any(self.filter_item(item.child(i), text) for i in range(item.childCount()))
         item.setHidden(not (vis or c_vis or text == ""))
         return vis or c_vis
-        
+
     def show_tree_menu(self, pos):
         item = self.tree.itemAt(pos)
         if not item:
@@ -1156,7 +1156,7 @@ class MainWindow(QMainWindow):
 
         self.record_navigation_point()
         pdf_page = item.data(0, Qt.UserRole + 100)
-        
+
         if pdf_page is not None:
             viewer = self.get_current_viewer()
             if viewer:
@@ -1286,7 +1286,7 @@ class MainWindow(QMainWindow):
             self.note_edit.setHtml(html_note.replace("\n", "<br>"))
         except Exception as e:
             QMessageBox.warning(self, t("msg_error"), t("err_save_note").format(e))
-            
+
     def handle_knowledge_link(self, url):
         try:
             self.record_navigation_point()
