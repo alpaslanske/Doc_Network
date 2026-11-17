@@ -46,7 +46,7 @@ Download the pre-built package for your operating system from the **Releases** p
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com
+   git clone https://github.com/alpaslanske/Doc_Network.git
    cd Doc_Network
    ```
 

@@ -25,44 +25,50 @@ jobs:
         python-version: '3.11'
         cache: 'pip'
 
-    # 3. Resolve internal Python dependencies
+    # 3. Install application dependencies and PyInstaller
     - name: Bağımlılıkları Yükle
       run: |
         python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install -r requirements.txt
+        pip install pyinstaller
 
-    # 4. Generate the modern launcher desktop shortcut
-    - name: Masaüstü Başlatıcı Dosyasını Oluştur
+    # 4. Bundle the Python application and its runtime resources
+    - name: Uygulamayı AppDir içine paketle
       run: |
-        cat << 'EOF' > Doc_Network.desktop
+        pyinstaller --noconfirm --clean --onedir --name Doc_Network \
+          --add-data "langs:langs" --add-data "icon.png:." doc_network.py
+        mkdir -p AppDir/usr/bin
+        cp -a dist/Doc_Network/. AppDir/usr/bin/
+        cp icon.png AppDir/doc_network.png
+        cat << 'EOF' > AppDir/doc_network.desktop
         [Desktop Entry]
         Type=Application
         Name=Doc_Network
-        Exec=doc_network.py
-        Icon=icon
+        Exec=AppRun
+        Icon=doc_network
         Categories=Utility;
-        Terminal=true
+        Terminal=false
         EOF
+        cat << 'EOF' > AppDir/AppRun
+        #!/bin/sh
+        HERE="$(dirname "$(readlink -f "$0")")"
+        exec "$HERE/usr/bin/Doc_Network" "$@"
+        EOF
+        chmod +x AppDir/AppRun
 
-    # 5. Download and mount the official packaging runtime compiler
+    # 5. Download the AppImage packager
     - name: AppImage Hazırla
       run: |
         wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
         chmod +x appimagetool-x86_64.AppImage
 
-        # Enforce proper execution boundaries
-        chmod a+x doc_network.py
-        ln -sf doc_network.py AppRun
-        chmod a+x AppRun
-        chmod -R a+rX .
-
-    # 6. Build the highly compressed standalone binary
+    # 6. Build the AppImage from the self-contained AppDir
     - name: AppImage Derle
       run: |
-        ARCH=x86_64 ./appimagetool-x86_64.AppImage .
+        ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir
         mv Doc_Network-x86_64.AppImage Doc_Network_Portable-x86_64.AppImage
 
-    # 7. Atomically ship the binary payload to the GitHub Releases section
+    # 7. Upload the binary to the GitHub Release
     - name: GitHub Release Olarak Yayınla
       uses: softprops/action-gh-release@v2
       with:

@@ -26,7 +26,8 @@ from widgets.bookmark_tree import BookmarkTree
 from widgets.doc_viewer import DOCViewer
 from lang import t, set_lang
 from widgets.recent_file_card import RecentFileCard
-from widgets.doc_workers import PDFPrintWorker, PDFSearchWorker
+from widgets.doc_workers import GlobalLibrarySearchWorker, PDFPrintWorker, PDFSearchWorker
+from widgets.office_cache import get_office_cache_path
 from widgets.export_manager import ExportManager
 
 
@@ -48,92 +49,64 @@ class OfficeConvertWorker(QThread):
 
             cache_dir.mkdir(parents=True, exist_ok=True)
 
-            file_stat = input_p.stat()
-            unique_id = f"{input_p.stem}_{file_stat.st_size}_{int(file_stat.st_mtime)}"
-            cached_pdf = cache_dir / f"{unique_id}.pdf"
+            cached_pdf = get_office_cache_path(input_p, cache_dir)
 
             if cached_pdf.exists() and cached_pdf.stat().st_size > 0:
                 self.finished.emit(str(cached_pdf), self.input_path, self.page, self.x, self.y)
                 return
 
-            temp_working_dir = Path(tempfile.mkdtemp(dir=cache_dir))
-            temp_input_file = temp_working_dir / input_p.name
-            shutil.copy2(str(input_p), str(temp_input_file))
+            with tempfile.TemporaryDirectory(dir=cache_dir) as temp_dir:
+                temp_working_dir = Path(temp_dir)
+                temp_input_file = temp_working_dir / input_p.name
+                shutil.copy2(str(input_p), str(temp_input_file))
 
-            expected_temp_pdf = temp_working_dir / f"{input_p.stem}.pdf"
-            converted = False
+                expected_temp_pdf = temp_working_dir / f"{input_p.stem}.pdf"
+                converted = False
 
-            if sys.platform == "win32" and input_p.suffix.lower() == ".docx":
-                try:
-                    import win32com.client
-                    import pythoncom
-                    pythoncom.CoInitialize()
-                    word = win32com.client.DispatchEx("Word.Application")
-                    word.Visible = False
-                    word_doc = word.Documents.Open(str(temp_input_file))
-                    word_doc.SaveAs(str(expected_temp_pdf), FileFormat=17)
-                    word_doc.Close()
-                    word.Quit()
-                    pythoncom.CoUninitialize()
+                if sys.platform == "win32" and input_p.suffix.lower() == ".docx":
+                    try:
+                        import win32com.client
+                        import pythoncom
+                        pythoncom.CoInitialize()
+                        word = win32com.client.DispatchEx("Word.Application")
+                        word.Visible = False
+                        word_doc = word.Documents.Open(str(temp_input_file))
+                        word_doc.SaveAs(str(expected_temp_pdf), FileFormat=17)
+                        word_doc.Close()
+                        word.Quit()
+                        pythoncom.CoUninitialize()
 
-                    if expected_temp_pdf.exists() and expected_temp_pdf.stat().st_size > 0:
-                        converted = True
-                except Exception:
-                    pass
+                        if expected_temp_pdf.exists() and expected_temp_pdf.stat().st_size > 0:
+                            converted = True
+                    except Exception:
+                        pass
 
-            if not converted:
-                lo_profile = temp_working_dir / "lo_profile"
-                env_arg = f"-env:UserInstallation=file://{lo_profile.as_posix()}"
+                if not converted:
+                    lo_profile = temp_working_dir / "lo_profile"
+                    env_arg = f"-env:UserInstallation=file://{lo_profile.as_posix()}"
 
-                pdf_export_filter = "writer_pdf_Export"
-                filter_data = ""
+                    pdf_export_filter = "writer_pdf_Export"
+                    filter_data = ""
 
-                if input_p.suffix.lower() in [".xlsx", ".xls", ".ods"]:
-                    pdf_export_filter = "calc_pdf_Export"
-                    filter_data = '{"FitWidth":{v:"1",type:"long"},"IsFitToPage":{v:"true",type:"boolean"}}'
+                    if input_p.suffix.lower() in [".xlsx", ".xls", ".ods"]:
+                        pdf_export_filter = "calc_pdf_Export"
+                        filter_data = '{"FitWidth":{v:"1",type:"long"},"IsFitToPage":{v:"true",type:"boolean"}}'
 
-                cmd = [
-                    "soffice", env_arg, "--headless",
-                    "--convert-to", f"pdf:{pdf_export_filter}:{filter_data}",
-                    "--outdir", str(temp_working_dir),
-                    str(temp_input_file)
-                ]
-                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=25)
+                    cmd = [
+                        "soffice", env_arg, "--headless",
+                        "--convert-to", f"pdf:{pdf_export_filter}:{filter_data}",
+                        "--outdir", str(temp_working_dir),
+                        str(temp_input_file)
+                    ]
+                    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=25)
 
-            if expected_temp_pdf.exists() and expected_temp_pdf.stat().st_size > 0:
-                try:
-                    cleanup_doc = pymupdf.open(str(expected_temp_pdf))
-                    for p_idx in range(len(cleanup_doc)):
-                        p = cleanup_doc[p_idx]
+                if expected_temp_pdf.exists() and expected_temp_pdf.stat().st_size > 0:
+                    shutil.move(str(expected_temp_pdf), str(cached_pdf))
+                else:
+                    self.error.emit("Dönüştürülen PDF boş veya oluşturulamadı.")
+                    return
 
-                        found_watermarks = []
-                        for pattern in ["Sayfa", "Sayfa ", "Page", "Page ", "Page 1", "Sayfa 1", "Sayfa 2"]:
-                            found_watermarks.extend(p.search_for(pattern))
-
-                        for watermark_rect in found_watermarks:
-                            p.add_redact_annot(watermark_rect, fill=(1, 1, 1))
-
-                        page_width = p.rect.width
-                        page_height = p.rect.height
-
-                        p.add_redact_annot(pymupdf.Rect(0, 0, 20, page_height), fill=(1, 1, 1))
-                        p.add_redact_annot(pymupdf.Rect(page_width - 20, 0, page_width, page_height), fill=(1, 1, 1))
-                        p.add_redact_annot(pymupdf.Rect(0, 0, page_width, 20), fill=(1, 1, 1))
-                        p.add_redact_annot(pymupdf.Rect(0, page_height - 20, page_width, page_height), fill=(1, 1, 1))
-
-                        p.apply_redactions()
-
-                    cleanup_doc.save(str(expected_temp_pdf), garbage=4, deflate=True)
-                    cleanup_doc.close()
-                except Exception as clean_err:
-                    print(f"Filigran temizleme hatası (atlandı): {clean_err}")
-
-                shutil.move(str(expected_temp_pdf), str(cached_pdf))
-                self.finished.emit(str(cached_pdf), self.input_path, self.page, self.x, self.y)
-            else:
-                self.error.emit("Dönüştürülen PDF boş veya oluşturulamadı.")
-
-            shutil.rmtree(temp_working_dir, ignore_errors=True)
+            self.finished.emit(str(cached_pdf), self.input_path, self.page, self.x, self.y)
 
         except Exception as e:
             self.error.emit(str(e))
@@ -160,14 +133,19 @@ class MainWindow(QMainWindow):
         else:
             self.proje_ana_dizini = Path(os.path.realpath(__file__)).parent
 
-        icon_path = self.proje_ana_dizini / "icon.png"
+        self.resource_dir = Path(
+            getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)
+        )
+        icon_path = self.resource_dir / "icon.png"
         if not icon_path.exists():
-            icon_path = self.proje_ana_dizini / "icon.svg"
+            icon_path = self.resource_dir / "icon.svg"
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
 
         self.tree = BookmarkTree()
         self.search_worker = None
+        self.global_search_workers = []
+        self.global_search_request_id = 0
 
         self.page_label = QLabel()
         self.zoom_label = QLabel()
@@ -911,6 +889,10 @@ class MainWindow(QMainWindow):
         self.save_settings()
 
     def closeEvent(self, event):
+        for worker in self.global_search_workers:
+            worker.requestInterruption()
+        for worker in self.global_search_workers:
+            worker.wait()
         self.save_settings()
         super().closeEvent(event)
 
@@ -927,6 +909,10 @@ class MainWindow(QMainWindow):
         if not viewer or not viewer.current_file_path:
             return
 
+        self.global_search_request_id += 1
+        for worker in self.global_search_workers:
+            worker.requestInterruption()
+
         if self.search_worker and self.search_worker.isRunning():
             self.search_worker.requestInterruption()
             self.search_worker.wait()
@@ -941,55 +927,68 @@ class MainWindow(QMainWindow):
         self.search_worker.start()
 
     def search_global_library(self, query):
-        q_lower = query.lower()
+        self.global_search_request_id += 1
+        request_id = self.global_search_request_id
+        for active_worker in self.global_search_workers:
+            active_worker.requestInterruption()
+
         self.search_results.clear()
+        self.search_results.addItem("Kütüphane aranıyor...")
+        self.btn_search.setEnabled(False)
+
         bookmarks = self.db.get_bookmarks()
         groups = dict((gid, name) for gid, name, _ in self.db.get_groups())
-        matches = []
         searched_files = set()
-
         for b in bookmarks:
-            bid, title, pdf_path, page, group_id = b[:5]
-            searched_files.add(pdf_path)
-            full_b = self.db.get_bookmark(bid)
-            note = ""
-            if full_b and len(full_b) > 7:
-                _, _, _, _, _, _, _, raw_note = full_b[:8]
-                note = raw_note or ""
-
-            if q_lower in (title or "").lower() or q_lower in note.lower():
-                group_name = groups.get(group_id, "Genel")
-                file_name = Path(pdf_path).name
-                preview = f"📌 [{group_name}] {title}\n    📄 {file_name} (Sayfa {page + 1})"
-                if q_lower in note.lower():
-                    snippet = note.replace("\n", " ")[:60]
-                    preview += f"\n    📝 Not: {snippet}..."
-                matches.append((("global_bookmark", bid), preview))
+            if b[2]:
+                searched_files.add(b[2])
 
         for item in getattr(self, "pdf_history", []):
             p_str = item.get("path", "") if isinstance(item, dict) else item
             if p_str:
                 searched_files.add(p_str)
 
-        for f_path in searched_files:
-            p_obj = Path(f_path)
-            if p_obj.exists() and p_obj.suffix.lower() == ".pdf":
-                try:
-                    doc = pymupdf.open(str(p_obj))
-                    for p_idx in range(len(doc)):
-                        rects = doc[p_idx].search_for(query)
-                        if rects:
-                            preview = f"📄 {p_obj.name} (Sayfa {p_idx + 1})\n    🔍 {len(rects)} eşleşme bulundu"
-                            matches.append((("global_pdf", str(p_obj), p_idx, rects), preview))
-                    doc.close()
-                except Exception:
-                    pass
+        worker = GlobalLibrarySearchWorker(
+            request_id, query, bookmarks, groups, searched_files
+        )
+        worker.results_ready.connect(self._on_global_search_finished)
+        worker.error.connect(self._on_global_search_error)
+        worker.finished.connect(
+            lambda worker=worker: self._release_global_search_worker(worker)
+        )
+        self.global_search_workers.append(worker)
+        worker.start()
 
+    def _release_global_search_worker(self, worker):
+        if worker in self.global_search_workers:
+            self.global_search_workers.remove(worker)
+
+    def _on_global_search_finished(self, request_id, matches, errors):
+        if request_id != self.global_search_request_id:
+            return
+
+        self.btn_search.setEnabled(True)
+        self.search_results.clear()
         self.search_results.addItem(f"Kütüphane Eşleşmesi: {len(matches)}")
         for payload, preview in matches:
             itm = QListWidgetItem(preview)
             itm.setData(Qt.UserRole, payload)
             self.search_results.addItem(itm)
+
+        if errors:
+            error_item = QListWidgetItem(
+                f"{len(errors)} PDF aranamadı. Ayrıntılar için üzerine gelin."
+            )
+            error_item.setToolTip("\n".join(errors))
+            self.search_results.addItem(error_item)
+
+    def _on_global_search_error(self, request_id, err_msg):
+        if request_id != self.global_search_request_id:
+            return
+
+        self.btn_search.setEnabled(True)
+        self.search_results.clear()
+        self.search_results.addItem(f"Arama hatası: {err_msg}")
 
 
     def _on_search_finished(self, pages):
@@ -1252,10 +1251,6 @@ class MainWindow(QMainWindow):
         msg_text = t("msg_delete_group_confirm").format(item.text(0))
         reply = QMessageBox.question(self, t("msg_warning"), msg_text, QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
-            bookmarks = self.db.get_bookmarks()
-            for b in bookmarks:
-                if len(b) > 4 and b[4] == group_id:
-                    self.db.delete_bookmark(b[0])
             self.db.delete_group(group_id)
             self.load_groups()
 

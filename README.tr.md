@@ -46,7 +46,7 @@ Projenin **Releases** sayfasından işletim sisteminize uygun paketi indirip kur
 
 1. Depoyu bilgisayarınıza klonlayın:
    ```bash
-   git clone https://github.com
+   git clone https://github.com/alpaslanske/Doc_Network.git
    cd Doc_Network
    ```
 

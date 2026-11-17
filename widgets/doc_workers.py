@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from pathlib import Path
+
 from PySide6.QtCore import QThread, Signal
 import pymupdf
 import pandas as pd
@@ -32,6 +34,77 @@ class PDFSearchWorker(QThread):
             self.finished.emit(results)
         except Exception as e:
             self.error.emit(str(e))
+
+
+class GlobalLibrarySearchWorker(QThread):
+    results_ready = Signal(int, list, list)
+    error = Signal(int, str)
+
+    def __init__(self, request_id, query, bookmarks, groups, pdf_paths):
+        super().__init__()
+        self.request_id = request_id
+        self.query = query
+        self.bookmarks = bookmarks
+        self.groups = groups
+        self.pdf_paths = set(pdf_paths)
+
+    def run(self):
+        try:
+            query_lower = self.query.lower()
+            matches = []
+            errors = []
+
+            for bookmark in self.bookmarks:
+                if self.isInterruptionRequested():
+                    return
+
+                bid, title, pdf_path, page, group_id = bookmark[:5]
+                note = bookmark[7] or "" if len(bookmark) > 7 else ""
+
+                if pdf_path:
+                    self.pdf_paths.add(pdf_path)
+
+                if query_lower in (title or "").lower() or query_lower in note.lower():
+                    group_name = self.groups.get(group_id, "Genel")
+                    file_name = Path(pdf_path).name if pdf_path else ""
+                    preview = f"📌 [{group_name}] {title}\n    📄 {file_name} (Sayfa {page + 1})"
+                    if query_lower in note.lower():
+                        snippet = note.replace("\n", " ")[:60]
+                        preview += f"\n    📝 Not: {snippet}..."
+                    matches.append((("global_bookmark", bid), preview))
+
+            for file_path in self.pdf_paths:
+                if self.isInterruptionRequested():
+                    return
+
+                pdf_path = Path(file_path)
+                if pdf_path.suffix.lower() != ".pdf":
+                    continue
+                if not pdf_path.is_file():
+                    errors.append(f"{pdf_path}: dosya bulunamadı")
+                    continue
+
+                try:
+                    with pymupdf.open(str(pdf_path)) as doc:
+                        for page_no in range(len(doc)):
+                            if self.isInterruptionRequested():
+                                return
+                            rects = doc[page_no].search_for(self.query)
+                            if rects:
+                                preview = (
+                                    f"📄 {pdf_path.name} (Sayfa {page_no + 1})\n"
+                                    f"    🔍 {len(rects)} eşleşme bulundu"
+                                )
+                                matches.append((
+                                    ("global_pdf", str(pdf_path), page_no, rects),
+                                    preview
+                                ))
+                except Exception as e:
+                    errors.append(f"{pdf_path}: {e}")
+
+            self.results_ready.emit(self.request_id, matches, errors)
+        except Exception as e:
+            self.error.emit(self.request_id, str(e))
 
 
 class TableExportWorker(QThread):

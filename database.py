@@ -115,8 +115,21 @@ class Database:
 
     def delete_group(self, group_id: int) -> None:
         with self.lock:
-            self.conn.execute("DELETE FROM groups WHERE id=?", (group_id,))
-            self.conn.commit()
+            with self.conn:
+                group = self.conn.execute(
+                    "SELECT parent_id FROM groups WHERE id=?", (group_id,)
+                ).fetchone()
+                if group is None:
+                    return
+
+                self.conn.execute(
+                    "UPDATE groups SET parent_id=? WHERE parent_id=?",
+                    (group[0], group_id)
+                )
+                self.conn.execute(
+                    "DELETE FROM bookmarks WHERE group_id=?", (group_id,)
+                )
+                self.conn.execute("DELETE FROM groups WHERE id=?", (group_id,))
 
     def add_bookmark(self, title: str, pdf_path: str, page: int, group_id: int, x: float = 0, y: float = 0) -> None:
         with self.lock:

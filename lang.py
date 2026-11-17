@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 import json
-import os
+import sys
 from pathlib import Path
 
-def get_system_documents_dir():
-    if "APPIMAGE" in os.environ:
-        return Path(os.environ["APPIMAGE"]).parent
-    else:
-        return Path(os.path.realpath(__file__)).parent
+def get_resource_dir():
+    if getattr(sys, "frozen", False):
+        return Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return Path(__file__).resolve().parent
 
-PROJE_ANA_DIZINI = get_system_documents_dir()
-LANGS_DIR = PROJE_ANA_DIZINI / "langs"
+LANGS_DIR = get_resource_dir() / "langs"
 
 # Hafızada aktif dili ve kelime önbelleğini (cache) tutuyoruz
 AKTIF_DIL = "en"

@@ -114,7 +114,7 @@
     "btn_dashboard": "🏠 Dashboard",
     "btn_back_to_doc": "📄 Back to Document",
     "dlg_group_new_name": "New Group Name:",
-    "msg_delete_group_confirm": "Are you sure you want to delete the group '{}' and all its bookmarks?",
+    "msg_delete_group_confirm": "Delete group '{}' and its bookmarks? Child groups will be moved to its parent.",
     "err_convert_title": "Conversion Error",
     "err_convert_msg": "Document could not be converted to PDF format.\nMake sure Microsoft Word or LibreOffice is installed on your system.",
     "err_open_title": "Open Error",
