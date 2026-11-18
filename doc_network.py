@@ -1505,7 +1505,6 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, t("msg_error"), str(e))
 
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setApplicationName("Doc_Network")
@@ -1513,8 +1512,11 @@ if __name__ == "__main__":
 
     window = MainWindow()
 
-    if len(sys.argv) > 1 and Path(sys.argv).exists():
-        window.open_in_tab(sys.argv)
+    # DÜZELTİLMİŞ KISIM: sys.argv[1] kullanıldı
+    if len(sys.argv) > 1:
+        file_path = Path(sys.argv[1]).resolve()
+        if file_path.exists() and file_path.is_file():
+            window.open_in_tab(str(file_path))
 
     window.show()
     sys.exit(app.exec())
