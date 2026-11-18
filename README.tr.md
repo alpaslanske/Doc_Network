@@ -1,4 +1,4 @@
-# PDF Network: Centralized Bookmarks for PDF Documents
+# Document Network: Centralized Bookmarks for Documents
 [![License](https://img.shields.io/badge/license-GNU/GPLv3-blue)](LICENSE)
 [![Python3](https://img.shields.io/badge/Python-3.x-red)](https://github.com/alpaslanske/Doc_Network)
 [![Made In Turkey](https://github.com/alpaslanske/PDF_Network/blob/main/.assets/madeinturkiye.svg)](https://goturkiye.com/)
