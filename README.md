@@ -16,6 +16,7 @@
 * **Wide File Format Support:**
   * **PDF & E-Books:** `.pdf`, `.epub`, `.mobi`, `.fb2`, `.cbz`
   * **Office Documents (with Smart Caching):** `.docx`, `.odt`, `.xlsx`, `.ods`, `.pptx`, `.odp`, `.odg`, `.odf`, `.rtf`, `.csv`
+  * **Markdown Documents:** `.md`, `.markdown`
 * **Cross-Document Linking (`[[file#page]]`):**
   * Insert clickable links inside your study notes pointing to specific pages of other documents.
   * Clicking a link opens the target document in a new tab and jumps directly to the exact page.

@@ -16,6 +16,7 @@
 * **Geniş Dosya Formatı Desteği:**
   * **PDF ve E-Kitaplar:** `.pdf`, `.epub`, `.mobi`, `.fb2`, `.cbz`
   * **Ofis Belgeleri (Akıllı Önbellek ile):** `.docx`, `.odt`, `.xlsx`, `.ods`, `.pptx`, `.odp`, `.odg`, `.odf`, `.rtf`, `.csv`
+  * **Markdown Belgeleri:** `.md`, `.markdown`
 * **Çapraz Belge Bağlantıları (`[[dosya#sayfa]]`):**
   * Aldığınız çalışma notlarının içine farklı bir belgenin belirli bir sayfasına giden tıklanabilir bağlantılar ekleyin.
   * Tıkladığınızda hedef belge yeni sekmede açılır ve doğrudan ilgili sayfaya odaklanır.

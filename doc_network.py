@@ -33,6 +33,7 @@ from widgets.export_manager import ExportManager
 from widgets.md_viewer import MarkdownViewer
 from widgets.data_backup import create_data_backup, restore_data_backup
 from widgets.settings_dialog import SettingsDialog
+from widgets.desktop_integration import register_context_menu
 
 class OfficeConvertWorker(QThread):
     converted = Signal(str, str, int, float, float)
@@ -809,9 +810,25 @@ class MainWindow(QMainWindow):
         dialog.backup_import_requested.connect(
             lambda: self.import_data_backup(dialog)
         )
+        dialog.context_menu_requested.connect(self.register_in_context_menu)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.library_path = dialog.selected_library_path
             self.save_settings()
+
+    def register_in_context_menu(self):
+        try:
+            icon_path = self.resource_dir / "icon.png"
+            if not icon_path.exists():
+                icon_path = self.resource_dir / "icon.svg"
+            desktop_file = register_context_menu(Path(__file__), icon_path)
+            QMessageBox.information(
+                self,
+                t("msg_success"),
+                f"Doc_Network sağ tık 'Birlikte Aç' menüsüne eklendi:\n{desktop_file}",
+            )
+        except Exception as e:
+            QMessageBox.critical(self, t("msg_error"), str(e))
+
 
     def export_data_backup(self):
         self.save_settings()

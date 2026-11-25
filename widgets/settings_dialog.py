@@ -19,6 +19,7 @@ from lang import t
 class SettingsDialog(QDialog):
     backup_export_requested = Signal()
     backup_import_requested = Signal()
+    context_menu_requested = Signal()
 
     def __init__(self, library_path: Path, parent=None) -> None:
         super().__init__(parent)
@@ -45,6 +46,10 @@ class SettingsDialog(QDialog):
         backup_row.addWidget(self.export_button)
         backup_row.addWidget(self.import_button)
         layout.addLayout(backup_row)
+
+        self.context_menu_button = QPushButton("🖱️ Sağ Tık 'Birlikte Aç' Menüsüne Ekle")
+        self.context_menu_button.clicked.connect(self.context_menu_requested)
+        layout.addWidget(self.context_menu_button)
 
         self.button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save
